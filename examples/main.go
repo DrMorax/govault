@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	// Create a cache with a memory limit of 1 MB
-	cache := govault.New[string, string](3) // 1 MB limit
+	// Create a cache with a memory limit of 3 MB
+	cache := govault.New[string, string](3) // 3 MB limit
 
 	// Add some entries (assuming small values here for simplicity)
 	cache.Set("a", oneMBText)
