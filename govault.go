@@ -1,3 +1,4 @@
+// GoVault is a basic server-side [key, value] caching solution that caches pretty much any data type as values and comparable types as their keys
 package govault
 
 import (
