@@ -8,21 +8,25 @@ import (
 
 func main() {
 	// Create a cache with a memory limit of 1 MB
-	cache := govault.New // 1 MB limit
+	cache := govault.New[string, string](3) // 1 MB limit
 
 	// Add some entries (assuming small values here for simplicity)
-	cache.Set("a", "value_a")
-	cache.Set("b", "value_b")
-	cache.Set("c", "value_c")
+	cache.Set("a", oneMBText)
+	cache.Set("b", oneMBText)
+	cache.Set("c", oneMBText)
+	cache.Set("d", oneMBText)
 
+	_, found1 := cache.Get("a")
+	_, found2 := cache.Get("b")
+	_, found3 := cache.Get("c")
+	_, found4 := cache.Get("d")
 	// Check entries
-	fmt.Println("Found a:", cache.Get("a"))
-	fmt.Println("Found b:", cache.Get("b"))
-
-	// Add a large entry to trigger eviction (assuming large size for example)
-	cache.Set("d", "this_is_a_large_value")
+	fmt.Println("a:", found1)
+	fmt.Println("b:", found2)
+	fmt.Println("c:", found3)
+	fmt.Println("d:", found4)
 
 	// Check if least recently used entry ("a") has been evicted
-	_, found := cache.Get("a")
-	fmt.Println("Found a after eviction:", found)
+	_, found5 := cache.Get("a")
+	fmt.Println("a:", found5)
 }

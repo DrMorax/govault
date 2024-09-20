@@ -2,6 +2,7 @@ package govault
 
 import (
 	"container/list"
+	"reflect"
 	"sync"
 	"unsafe"
 )
@@ -114,9 +115,61 @@ func (c *Cache[Key, Value]) Delete(key Key) {
 }
 
 // calculateEntrySize estimates the memory size of a key-value pair in bytes.
+// This version handles structs, maps, slices, and other composite types.
 func (c *Cache[Key, Value]) calculateEntrySize(key Key, value Value) int64 {
-	keySize := int64(unsafe.Sizeof(key))
-	valueSize := int64(unsafe.Sizeof(value))
-
+	keySize := c.calculateSize(reflect.ValueOf(key))
+	valueSize := c.calculateSize(reflect.ValueOf(value))
 	return keySize + valueSize
+}
+
+// calculateSize recursively calculates the size of any Go type.
+func (c *Cache[Key, Value]) calculateSize(v reflect.Value) int64 {
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		// Handle pointer or interface types
+		if v.IsNil() {
+			return int64(unsafe.Sizeof(v.Pointer()))
+		}
+		return int64(unsafe.Sizeof(v.Pointer())) + c.calculateSize(v.Elem())
+
+	case reflect.String:
+		// String: Size of the string header + actual length of the string content
+		return int64(unsafe.Sizeof(v.String())) + int64(len(v.String()))
+
+	case reflect.Slice:
+		// Slice: Size of the slice header + size of each element
+		size := int64(unsafe.Sizeof(v.Pointer())) + int64(v.Cap())*int64(unsafe.Sizeof(v.Index(0).Interface()))
+		for i := 0; i < v.Len(); i++ {
+			size += c.calculateSize(v.Index(i))
+		}
+		return size
+
+	case reflect.Map:
+		// Map: Size of the map header + size of each key and value
+		size := int64(unsafe.Sizeof(v.Pointer()))
+		for _, key := range v.MapKeys() {
+			size += c.calculateSize(key) + c.calculateSize(v.MapIndex(key))
+		}
+		return size
+
+	case reflect.Struct:
+		// Struct: Sum the size of each field
+		size := int64(0)
+		for i := 0; i < v.NumField(); i++ {
+			size += c.calculateSize(v.Field(i))
+		}
+		return size
+
+	case reflect.Array:
+		// Array: Sum the size of each element
+		size := int64(0)
+		for i := 0; i < v.Len(); i++ {
+			size += c.calculateSize(v.Index(i))
+		}
+		return size
+
+	default:
+		// For basic types (int, bool, etc.), just use unsafe.Sizeof
+		return int64(unsafe.Sizeof(v.Interface()))
+	}
 }
