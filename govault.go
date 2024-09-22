@@ -1,4 +1,6 @@
-// GoVault is a basic server-side [key, value] caching solution that caches pretty much any data type as values and comparable types as their keys
+// GoVault is a basic server-side [key, value] caching solution that caches pretty much any data type as values and comparable types as their keys.
+// It has a well configured LRU(Least Recently Used) eviction policy.
+// The LRU policy depends on the capacity of the cache set by the using the `New[key, value](maxMB)` function.
 package govault
 
 import (
@@ -10,11 +12,11 @@ import (
 
 // Cache is a generic in-memory cache with a memory limit (measured in bytes).
 type Cache[Key comparable, Value any] struct {
-	Mutex       sync.Mutex
-	Store       map[Key]*list.Element
-	EvictList   *list.List // List to track access order for LRU
-	MaxSize     int64      // Max memory size in bytes
-	CurrentSize int64      // Current memory usage in bytes
+	Mutex       sync.Mutex            // Used to synchronize reads and writes to the cache
+	Store       map[Key]*list.Element // List of stored elements in-cache
+	EvictList   *list.List            // List to track access order for LRU
+	MaxSize     int64                 // Max memory size in bytes
+	CurrentSize int64                 // Current memory usage in bytes
 }
 
 // entry holds both the key and value, and the memory size of the value.
@@ -24,7 +26,11 @@ type entry[Key comparable, Value any] struct {
 	size  int64 // Estimated memory size in bytes
 }
 
-// New creates a new cache instance with a memory limit *measured in MegaBytes*.
+// `govault.New[key, value](maxMB)` Create a new cache.
+// `k` is the key type, it can only be a comparable type
+// `v` is the value type, it can be pretty much any type, no restarins.
+// `maxMB` is the maximum capacity of that created cache in Megabytes.
+// The cache follows LRU(Least Recently Used) policy to determine which value to eject once the cache exceeds the specified limit.
 func New[Key comparable, Value any](maxMB int64) *Cache[Key, Value] {
 	if maxMB <= 0 {
 		panic("maxMB must be greater than zero")
@@ -39,6 +45,8 @@ func New[Key comparable, Value any](maxMB int64) *Cache[Key, Value] {
 
 // Set adds or updates a key-value pair in the cache.
 // If the cache exceeds the memory limit, it evicts the least recently used item.
+// Once a pair is set or updated, it would be moved to the top of the eviction list
+// meaning it would be the last pair to be evicted from memory
 func (c *Cache[Key, Value]) Set(key Key, value Value) {
 	c.Mutex.Lock()
 	defer c.Mutex.Unlock()
@@ -70,7 +78,7 @@ func (c *Cache[Key, Value]) Set(key Key, value Value) {
 	}
 }
 
-// Get retrieves a value from the cache by key and updates its LRU status.
+// Get retrieves a value from the cache by key and updates its LRU status to be evicted last.
 func (c *Cache[Key, Value]) Get(key Key) (Value, bool) {
 	c.Mutex.Lock()
 	defer c.Mutex.Unlock()

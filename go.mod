@@ -1,3 +1,3 @@
-module github.com/DrMorax/govault
+module github.com/drmorax/govault
 
 go 1.22.7
