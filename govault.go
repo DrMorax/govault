@@ -1,4 +1,4 @@
-// GoVault is a basic server-side [key, value] caching solution that caches pretty much any data type as values and comparable types as their keys.
+// GoVault is a basic [key, value] caching solution that caches pretty much any data type as values and comparable types as their keys.
 // It has a well configured LRU(Least Recently Used) eviction policy.
 // The LRU policy depends on the capacity of the cache set by the using the `New[key, value](maxMB)` function.
 package govault
